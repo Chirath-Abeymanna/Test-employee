@@ -9,17 +9,6 @@ function getCurrentSriLankaTime(): Date {
   return new Date();
 }
 
-function getSriLankaDate(dateString?: string): Date {
-  if (dateString) {
-    // Create date for the given date at UTC midnight
-    return new Date(dateString + "T00:00:00.000Z");
-  }
-  // Get current date at UTC midnight
-  const now = new Date();
-  const today = now.toISOString().split("T")[0]; // Gets YYYY-MM-DD format
-  return new Date(today + "T00:00:00.000Z");
-}
-
 function convertToSriLankaTime(timeString: string): Date {
   // Simply parse the input time as UTC - frontend handles timezone display
   return new Date(timeString);
@@ -30,6 +19,14 @@ function extractEmployeeIdFromAuth(request: Request): string | null {
   if (!authHeader) return null;
   const token = authHeader.replace("Bearer ", "");
   return getEmployeeIdFromToken(token);
+}
+
+function getUTCDateForLocalDate(dateString: string): Date {
+  const date = new Date(dateString); // e.g. "2025-10-01"
+  // Set UTC so that it represents local midnight (UTC = local - 5:30)
+  return new Date(
+    Date.UTC(date.getFullYear(), date.getMonth(), date.getDate(), 0, 0, 0)
+  );
 }
 
 export async function GET(request: Request) {
@@ -45,9 +42,32 @@ export async function GET(request: Request) {
   }
 
   // Create date range for querying attendance records
-  const dateObj = new Date(dateStr); // e.g. "2025-10-01"
-  const start = new Date(dateObj.setHours(0, 0, 0, 0)); // local 2025-10-01 00:00
-  const end = new Date(dateObj.setHours(23, 59, 59, 999)); // local 2025-10-01 23:59
+  const dateObj = new Date(dateStr);
+
+  // start of day in UTC
+  const start = new Date(
+    Date.UTC(
+      dateObj.getFullYear(),
+      dateObj.getMonth(),
+      dateObj.getDate(),
+      0,
+      0,
+      0
+    )
+  );
+
+  // end of day in UTC
+  const end = new Date(
+    Date.UTC(
+      dateObj.getFullYear(),
+      dateObj.getMonth(),
+      dateObj.getDate(),
+      23,
+      59,
+      59,
+      999
+    )
+  );
 
   const attendance = await Attendance.findOne({
     employee: employeeId,
@@ -111,9 +131,33 @@ export async function POST(request: Request) {
   }
 
   // Create date range for querying/creating attendance records
-  const dateObj = new Date(date); // e.g. "2025-10-01"
-  const start = new Date(dateObj.setHours(0, 0, 0, 0)); // local 2025-10-01 00:00
-  const end = new Date(dateObj.setHours(23, 59, 59, 999)); // local 2025-10-01 23:59
+  const dateObj = new Date(date);
+
+  // start of day in UTC
+  const start = new Date(
+    Date.UTC(
+      dateObj.getFullYear(),
+      dateObj.getMonth(),
+      dateObj.getDate(),
+      0,
+      0,
+      0
+    )
+  );
+
+  // end of day in UTC
+  const end = new Date(
+    Date.UTC(
+      dateObj.getFullYear(),
+      dateObj.getMonth(),
+      dateObj.getDate(),
+      23,
+      59,
+      59,
+      999
+    )
+  );
+  // local 2025-10-01 23:59
 
   let attendance = await Attendance.findOne({
     employee: employeeId,
@@ -135,7 +179,7 @@ export async function POST(request: Request) {
     if (!attendance) {
       attendance = new Attendance({
         employee: employeeId,
-        date: dateObj,
+        date: getUTCDateForLocalDate(date), // Store date in UTC
         workLocation:
           location === "WFH" ? "work_from_home" : "work_from_office",
         signInTime: sriLankaSignInTime,
