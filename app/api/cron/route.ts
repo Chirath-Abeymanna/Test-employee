@@ -125,7 +125,17 @@ export async function GET(request: NextRequest) {
 
         for (const attendance of validRecords) {
           try {
-            const employee = attendance.employee as any;
+            // Type guard to ensure employee is populated
+            const employee = attendance.employee as unknown as {
+              _id: Types.ObjectId;
+              name: string;
+              email: string;
+            };
+
+            if (!employee.name || !employee.email) {
+              console.error("[CRON] Employee data not properly populated");
+              continue;
+            }
 
             // Calculate hours worked up to the deadline
             const signInTime = new Date(attendance.signInTime!);

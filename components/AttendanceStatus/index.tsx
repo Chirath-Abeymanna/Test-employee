@@ -26,7 +26,7 @@ export function SignInStatusChecker() {
 
   return (
     <div className="p-4 border rounded-lg">
-      <h3 className="font-semibold mb-2">Today's Sign-In Status</h3>
+      <h3 className="font-semibold mb-2">Today&apos;s Sign-In Status</h3>
       <div className="flex items-center gap-2">
         <span
           className={`w-3 h-3 rounded-full ${
@@ -60,7 +60,7 @@ export function AttendanceStatusDisplay() {
   return (
     <div className="p-4 border rounded-lg bg-white shadow-sm">
       <div className="flex justify-between items-center mb-4">
-        <h3 className="font-semibold text-lg">Today's Attendance</h3>
+        <h3 className="font-semibold text-lg">Today&apos;s Attendance</h3>
         <button
           onClick={refetch}
           className="px-3 py-1 text-sm bg-blue-500 text-white rounded hover:bg-blue-600"
@@ -233,13 +233,21 @@ export function WorkStatusWidget() {
 
 // ==================== QUICK STATUS CHECK ====================
 
+// Interface for the status object passed to onStatusChange
+interface QuickStatusInfo {
+  hasSignedIn: boolean;
+  hasSignedOut: boolean;
+  isWorking: boolean;
+  workingHours: number;
+}
+
 /**
  * Utility function component for quick status checks
  */
 export function QuickAttendanceCheck({
   onStatusChange,
 }: {
-  onStatusChange?: (status: any) => void;
+  onStatusChange?: (status: QuickStatusInfo) => void;
 }) {
   const { attendance, loading } = useAttendanceStatus();
 
