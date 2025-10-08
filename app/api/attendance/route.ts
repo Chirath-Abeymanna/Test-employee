@@ -29,6 +29,20 @@ function getUTCDateForLocalDate(dateString: string): Date {
   );
 }
 
+function localMidnightToUTC(dateISO: string): Date {
+  // Parsing a fixed-offset timestamp creates the correct UTC instant.
+  // Example: "2025-10-01T00:00:00+05:30"
+  return new Date(`${dateISO}T00:00:00+05:30`);
+}
+
+/** Next local day midnight → UTC instant (exclusive upper bound) */
+function nextLocalMidnightToUTC(dateISO: string): Date {
+  const d = localMidnightToUTC(dateISO);
+  // add 24h in UTC (we are stepping from one local midnight to the next)
+  d.setUTCHours(d.getUTCHours() + 24);
+  return d;
+}
+
 export async function GET(request: Request) {
   await connectDB();
   const { searchParams } = new URL(request.url);
@@ -41,38 +55,14 @@ export async function GET(request: Request) {
     );
   }
 
-  // Create date range for querying attendance records
-  const dateObj = new Date(dateStr);
-
-  // start of day in UTC
-  const start = new Date(
-    Date.UTC(
-      dateObj.getFullYear(),
-      dateObj.getMonth(),
-      dateObj.getDate(),
-      0,
-      0,
-      0
-    )
-  );
-
-  // end of day in UTC
-  const end = new Date(
-    Date.UTC(
-      dateObj.getFullYear(),
-      dateObj.getMonth(),
-      dateObj.getDate(),
-      23,
-      59,
-      59,
-      999
-    )
-  );
+  const UTCDate = localMidnightToUTC(dateStr);
 
   const attendance = await Attendance.findOne({
     employee: employeeId,
-    date: { $gte: start, $lte: end },
+    date: { $gte: UTCDate },
   });
+
+  console.log("Fetched attendance record:", attendance);
 
   if (!attendance) {
     return NextResponse.json({ status: "idle" });
@@ -130,38 +120,14 @@ export async function POST(request: Request) {
     );
   }
 
-  // Create date range for querying/creating attendance records
   const dateObj = new Date(date);
 
-  // start of day in UTC
-  const start = new Date(
-    Date.UTC(
-      dateObj.getFullYear(),
-      dateObj.getMonth(),
-      dateObj.getDate(),
-      0,
-      0,
-      0
-    )
-  );
-
-  // end of day in UTC
-  const end = new Date(
-    Date.UTC(
-      dateObj.getFullYear(),
-      dateObj.getMonth(),
-      dateObj.getDate(),
-      23,
-      59,
-      59,
-      999
-    )
-  );
-  // local 2025-10-01 23:59
+  const UTCStartDate = localMidnightToUTC(date);
+  const UTCEndDate = nextLocalMidnightToUTC(date);
 
   let attendance = await Attendance.findOne({
     employee: employeeId,
-    date: { $gte: start, $lte: end },
+    date: { $gte: UTCStartDate, $lte: UTCEndDate },
   });
 
   console.log("Attendance record found:", attendance);

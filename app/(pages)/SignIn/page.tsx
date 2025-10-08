@@ -83,10 +83,10 @@ export default function SignInPage() {
   };
 
   return (
-    <div className="min-h-screen relative -top-16  flex items-center justify-center bg-gradient-to-br from-blue-100 via-blue-300 to-cyan-100 px-4">
+    <div className="min-h-screen min-w-screen absolute  flex items-center justify-center bg-gradient-to-br from-blue-100 via-blue-300 to-cyan-100 px-4">
       <form
         onSubmit={handleSubmit}
-        className="bg-white p-6 sm:p-10 rounded-2xl shadow-2xl w-full max-w-xs sm:max-w-md border border-gray-100 flex flex-col gap-6"
+        className="bg-white p-6 rounded-2xl shadow-2xl w-full max-w-xs sm:max-w-md border border-gray-100 flex flex-col gap-6"
       >
         <div className="flex flex-col items-center gap-2 mb-2">
           <div className="w-14 h-14 sm:w-16 sm:h-16 rounded-full bg-gradient-to-br from-blue-500 to-blue-800 flex items-center justify-center shadow-lg mb-2">

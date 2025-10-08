@@ -189,6 +189,7 @@ export default function AttendancePage() {
     if (!employeeId) return;
 
     const today = new Date().toISOString().split("T")[0];
+    console.log("Fetching attendance for", today);
     try {
       const token = localStorage.getItem("employee_token");
       const res = await fetch(`/api/attendance?date=${today}`, {
@@ -771,7 +772,11 @@ export default function AttendancePage() {
     }
   }, []);
 
-  // Auto sign-out timer
+  // Auto sign-out is now handled by server-side cron job
+  // See /api/cron route and CRON_SETUP.md for configuration
+  // This ensures employees are signed out even if they don't visit the page
+
+  // Optional: Show notification if employee should have been signed out
   useEffect(() => {
     if (
       status === "signedIn" &&
@@ -779,36 +784,33 @@ export default function AttendancePage() {
       companySignOutHour !== null &&
       companySignOutMinute !== null
     ) {
-      let signOutDeadline: Date;
-      console.log("Setting up auto sign-out timer");
-      console.log(signInTime, companySignOutHour, companySignOutMinute);
-      if (halfDayRequested) {
-        // Calculate halfway point between company start and end time
-        // Parse start and end from companyCookieData
+      const now = new Date();
+      const signOutDeadline = new Date();
+
+      if (halfDayRequested && companyCookieData) {
+        // Calculate halfway point for half-day
+        const companyObj = companyCookieData;
         let startHour = 9,
           startMinute = 0,
           endHour = 18,
           endMinute = 0;
-        if (companyCookieData) {
-          const companyObj = companyCookieData;
-          if (companyObj.company_start_time && companyObj.company_out_time) {
-            [startHour, startMinute] = companyObj.company_start_time
-              .split(":")
-              .map(Number);
-            [endHour, endMinute] = companyObj.company_out_time
-              .split(":")
-              .map(Number);
-          }
+
+        if (companyObj.company_start_time && companyObj.company_out_time) {
+          [startHour, startMinute] = companyObj.company_start_time
+            .split(":")
+            .map(Number);
+          [endHour, endMinute] = companyObj.company_out_time
+            .split(":")
+            .map(Number);
         }
-        // Calculate halfway time
+
         const start = new Date(signInTime);
         start.setHours(startHour, startMinute, 0, 0);
         const end = new Date(signInTime);
         end.setHours(endHour, endMinute, 0, 0);
         const halfMs = (end.getTime() - start.getTime()) / 2;
-        signOutDeadline = new Date(start.getTime() + halfMs);
+        signOutDeadline.setTime(start.getTime() + halfMs);
       } else {
-        signOutDeadline = new Date(signInTime);
         signOutDeadline.setHours(
           companySignOutHour,
           companySignOutMinute,
@@ -820,27 +822,23 @@ export default function AttendancePage() {
         }
       }
 
-      const nowTime = Date.now();
-      const deadlineMs = signOutDeadline.getTime();
-      const msUntilSignOut = deadlineMs - nowTime;
-      let timer: NodeJS.Timeout | null = null;
-
-      if (msUntilSignOut > 0) {
-        timer = setTimeout(() => {
-          handleAutoSignOut();
-        }, msUntilSignOut);
-      } else if (nowTime <= deadlineMs) {
-        // If current time is before or at deadline, do nothing
-      } else {
-        // If current time is after deadline, sign out immediately (only once)
-        handleAutoSignOut();
+      // Show reminder if past sign-out time (only once per session)
+      if (now > signOutDeadline) {
+        const timePast = Math.floor(
+          (now.getTime() - signOutDeadline.getTime()) / (1000 * 60)
+        );
+        if (timePast < 60 && timePast > 0) {
+          // Only show for first hour to avoid spam
+          toast.info(
+            `Your work day has ended. Please sign out manually or it will be done automatically.`,
+            {
+              description: `You were scheduled to sign out ${timePast} minutes ago.`,
+              duration: 10000,
+            }
+          );
+        }
       }
-
-      return () => {
-        if (timer) clearTimeout(timer);
-      };
     }
-    return () => {};
   }, [
     status,
     signInTime,
